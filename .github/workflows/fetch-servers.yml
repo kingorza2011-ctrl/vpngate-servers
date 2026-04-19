@@ -1,0 +1,33 @@
+name: Fetch VPN Gate Servers
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Fetch VPN Gate Servers
+      run: |
+        curl -s "https://www.vpngate.net/api/iphone/" -o vpngate_all_raw.txt
+        tail -n +3 vpngate_all_raw.txt | head -n -1 > temp.txt
+        
+        awk -F',' 'NF>=14 {
+          print $1"|"$2"|"$3"|"$4"|"$5"|"$6"|"$14
+        }' temp.txt > vpngate_all_formatted.txt
+        
+        rm -f vpngate_all_raw.txt temp.txt
+        echo "Sunucu sayisi:" && wc -l vpngate_all_formatted.txt
+    
+    - name: Commit and Push
+      run: |
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git add vpngate_all_formatted.txt
+        git commit -m "Update servers - $(date)" || exit 0
+        git push
